@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物理授業動画管理シート</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .progress-container {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            height: 25px;
+            position: relative;
+        }
+        .progress {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            position: absolute;
+            transition: width 0.5s;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 25px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f8f9fa;
+            position: sticky;
+            top: 0;
+        }
+        .set-header {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .weekend {
+            background-color: #f8f9fa;
+        }
+        .today {
+            background-color: #fff3cd;
+        }
+        .scheduled {
+            background-color: #d1ecf1;
+        }
+        .completed {
+            background-color: #d4edda;
+        }
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>物理授業動画管理シート</h1>
+        
+        <div class="info-section">
+            <p><strong>開始日:</strong> 2025年3月6日</p>
+            <p><strong>目標完了日:</strong> 2025年6月14日（100日間）</p>
+            <p><strong>合計動画数:</strong> 75本（5本 × 15セット）</p>
+            <p><strong>1日の目標視聴数:</strong> 平均0.75本（約4日に3本）</p>
+        </div>
+        
+        <div class="progress-container">
+            <h3>全体の進捗状況</h3>
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+            <p id="completionSummary">0/75本視聴完了</p>
+        </div>
+        
+        <div class="controls">
+            <button onclick="saveData()">データ保存</button>
+            <button onclick="resetAll()">すべてリセット</button>
+        </div>
+        
+        <table id="videoTable">
+            <thead>
+                <tr>
+                    <th>ユニット名</th>
+                    <th>動画</th>
+                    <th>予定日</th>
+                    <th>視聴日</th>
+                    <th>完了</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- JavaScriptで動的に生成 -->
+            </tbody>
+        </table>
+        
+        <div class="summary">
+            <h3>進捗サマリー</h3>
+            <p id="remainingVideos">残り動画数: 75本</p>
+            <p id="remainingDays">残り日数: 100日</p>
+            <p id="videosPerDay">目標ペース: 約4日に3本</p>
+            <p id="currentPace">現在のペース: --</p>
+        </div>
+    </div>
+
+    <script>
+        // 今日の日付を取得
+        const today = new Date();
+        const startDate = new Date(2025, 2, 6); // 3月6日（JavaScriptでは月は0から始まる）
+        
+        // データ構造
+        let videoData = [];
+        const totalSets = 15;
+        const videosPerSet = 5;
+        
+        // セット名の定義
+        const setNames = [
+            "錬成ユニット1", "錬成ユニット2", "錬成ユニット3", "錬成ユニット4", 
+            "錬成ユニット5", "錬成ユニット6", "錬成ユニット7", "錬成ユニット8",
+            "夏ユニット1", "夏ユニット2", 
+            "実践ユニット1", "実践ユニット2", "実践ユニット3", "実践ユニット4",
+            "直前ユニット"
+        ];
+
+        // 初期データのロード
+        function initializeData() {
+            let savedData = localStorage.getItem('physicsVideoData');
+            
+            if (savedData) {
+                videoData = JSON.parse(savedData);
+                updateUI();
+            } else {
+                createNewData();
+            }
+        }
+        
+        // 新しいデータの作成
+        function createNewData() {
+            videoData = [];
+            
+            // 100日間で均等に分布させる
+            const totalVideos = totalSets * videosPerSet;
+            const daysPerVideo = 100 / totalVideos;
+            
+            let videoCount = 0;
+            
+            for (let setNum = 1; setNum <= totalSets; setNum++) {
+                for (let videoNum = 1; videoNum <= videosPerSet; videoNum++) {
+                    videoCount++;
+                    
+                    // 予定日を計算（均等に分布）
+                    const daysToAdd = Math.floor((videoCount - 1) * daysPerVideo);
+                    const scheduledDate = new Date(startDate);
+                    scheduledDate.setDate(startDate.getDate() + daysToAdd);
+                    
+                    videoData.push({
+                        setNumber: setNum,
+                        setName: setNames[setNum - 1],
+                        videoNumber: videoNum,
+                        scheduledDate: scheduledDate,
+                        completedDate: null,
+                        completed: false
+                    });
+                }
+            }
+            
+            updateUI();
+            saveData();
+        }
+        
+        // UI更新
+        function updateUI() {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            // 全体の進捗を計算
+            const completedCount = videoData.filter(video => video.completed).length;
+            const progressPercent = (completedCount / videoData.length) * 100;
+            
+            // プログレスバーを更新
+            document.getElementById('progressBar').style.width = progressPercent + '%';
+            document.getElementById('progressText').textContent = Math.round(progressPercent) + '%';
+            document.getElementById('completionSummary').textContent = 
+                `${completedCount}/${videoData.length}本視聴完了`;
+            
+            // 残り日数の計算
+            const endDate = new Date(2025, 5, 14); // 6月14日
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const remainingDays = Math.max(0, Math.ceil((endDate - today) / msPerDay));
+            
+            // 残り動画数
+            const remainingVideos = videoData.length - completedCount;
+            
+            // 現在のペース計算
+            let currentPace = "まだ視聴を開始していません";
+            if (completedCount > 0) {
+                const daysSinceStart = Math.ceil((today - startDate) / msPerDay);
+                const videosPerDay = (completedCount / daysSinceStart).toFixed(2);
+                const projectedCompletion = Math.ceil(remainingVideos / videosPerDay);
+                currentPace = `1日あたり${videosPerDay}本（残り${projectedCompletion}日で完了予定）`;
+            }
+            
+            // サマリー更新
+            document.getElementById('remainingVideos').textContent = `残り動画数: ${remainingVideos}本`;
+            document.getElementById('remainingDays').textContent = `残り日数: ${remainingDays}日`;
+            document.getElementById('videosPerDay').textContent = 
+                `目標ペース: 約${(remainingVideos / Math.max(1, remainingDays)).toFixed(2)}本/日`;
+            document.getElementById('currentPace').textContent = `現在のペース: ${currentPace}`;
+            
+            // テーブル作成
+            let currentSet = 0;
+            
+            for (const video of videoData) {
+                // セットが変わる場合はヘッダー行を追加
+                if (currentSet !== video.setNumber) {
+                    currentSet = video.setNumber;
+                    const setRow = document.createElement('tr');
+                    setRow.className = 'set-header';
+                    setRow.innerHTML = `<td colspan="5">${video.setName}</td>`;
+                    tableBody.appendChild(setRow);
+                }
+                
+                const row = document.createElement('tr');
+                
+                // 日付のフォーマット
+                const scheduledDateStr = formatDate(video.scheduledDate);
+                let completedDateStr = '';
+                if (video.completedDate) {
+                    completedDateStr = formatDate(new Date(video.completedDate));
+                }
+                
+                // 予定日が今日なら強調
+                let scheduledClass = '';
+                if (isSameDay(video.scheduledDate, today)) {
+                    scheduledClass = 'today';
+                } else if (video.scheduledDate < today && !video.completed) {
+                    scheduledClass = 'weekend'; // 過ぎた日
+                } else if (!video.completed) {
+                    scheduledClass = 'scheduled';
+                }
+                
+                // 完了した動画は緑色に
+                let rowClass = video.completed ? 'completed' : '';
+                
+                row.className = rowClass;
+                row.innerHTML = `
+                    <td>${video.setName}</td>
+                    <td>動画 ${video.videoNumber}</td>
+                    <td class="${scheduledClass}">${scheduledDateStr}</td>
+                    <td>${completedDateStr}</td>
+                    <td>
+                        <input type="checkbox" class="checkbox" 
+                            data-set="${video.setNumber}" 
+                            data-video="${video.videoNumber}" 
+                            ${video.completed ? 'checked' : ''}>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            }
+            
+            // チェックボックスのイベントハンドラを設定
+            const checkboxes = document.querySelectorAll('.checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', handleCheckboxChange);
+            });
+        }
+        
+        // チェックボックス変更時の処理
+        function handleCheckboxChange(event) {
+            const setNumber = parseInt(event.target.dataset.set);
+            const videoNumber = parseInt(event.target.dataset.video);
+            const checked = event.target.checked;
+            
+            // データを更新
+            const videoIndex = videoData.findIndex(
+                video => video.setNumber === setNumber && video.videoNumber === videoNumber
+            );
+            
+            if (videoIndex !== -1) {
+                videoData[videoIndex].completed = checked;
+                videoData[videoIndex].completedDate = checked ? new Date() : null;
+                
+                // UIを更新
+                updateUI();
+                saveData();
+            }
+        }
+        
+        // データの保存
+        function saveData() {
+            localStorage.setItem('physicsVideoData', JSON.stringify(videoData));
+            alert('データが保存されました');
+        }
+        
+        // すべてリセット
+        function resetAll() {
+            if (confirm('すべてのデータをリセットしますか？')) {
+                localStorage.removeItem('physicsVideoData');
+                createNewData();
+            }
+        }
+        
+        // 日付のフォーマット関数
+        function formatDate(date) {
+            return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+        }
+        
+        // 同じ日かどうか確認する関数
+        function isSameDay(date1, date2) {
+            return date1.getFullYear() === date2.getFullYear() &&
+                   date1.getMonth() === date2.getMonth() &&
+                   date1.getDate() === date2.getDate();
+        }
+        
+        // 初期化
+        window.onload = initializeData;
+    </script>
+</body>
+</html>
